@@ -40,8 +40,14 @@ MUTUAL_FUNDS = {
     "ICICI Con Hyb": 133051,
     "ICICI Agg Hyb": 100356,
     "PPFAS Flexi": 122640,
+    "Invesco Flexi": 149766,
+    "HDFC Flexi": 101762,
+    "HDFC Mid": 105758,
+    "Bandhan Small": 147944,
 }
 BENCHMARKS = {
     "NI N50": 113296,
     "MO N500": 147626,
+    "NI Mid150": 148723,
+    "NI SC250": 148518,
 }
