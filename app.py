@@ -163,11 +163,13 @@ st.markdown(
 def card(k):
     s = sc[k]
     dc = "—" if np.isnan(s["dcap"]) else f'{s["dcap"]:.0f}%'
+    uc = "—" if np.isnan(s["ucap"]) else f'{s["ucap"]:.0f}%'
     return (f'<div class="kpi" style="--c:{COL[k]}"><div class="t">{LBL[k]}</div><div class="n">{NAMES[k]}</div>'
             f'<div class="big">{s["ret"]:+.1f}%</div><div class="inv">{an.inr(amount)} → {an.inr(amount * reb[k].iloc[-1] / 100)}</div>'
             f'<div class="r"><span>Maximum fall from peak</span><b>{s["mdd"]:.1f}%</b></div>'
             f'<div class="r"><span>Worst single day</span><b>{s["worst"]:.2f}%</b></div>'
-            f'<div class="r"><span>Down-capture</span><b>{dc}</b></div></div>')
+            f'<div class="r"><span>Down-capture</span><b>{dc}</b></div>'
+            f'<div class="r"><span>Up-capture</span><b>{uc}</b></div></div>')
 
 
 for col, k in zip(st.columns(3), an.KEYS):
@@ -253,17 +255,23 @@ with tab3:
 
 with tab4:
     st.markdown("#### Downside scorecard")
-    st.markdown('<div class="cap">Best value in each row is highlighted (up-capture is shown for context, not ranked). Capture ratios are measured against the benchmark: '
+    st.markdown('<div class="cap">Best value in each row is highlighted (on the capture rows only the SIF and mutual fund are ranked, as the benchmark is 100% by definition). Capture ratios are measured against the benchmark: '
                 'down-capture is the fund\'s average daily return on market-down days divided by the benchmark\'s; below 100% means it lost less; '
-                'a negative figure means it gained on average when the market fell.</div>', unsafe_allow_html=True)
+                'a negative figure means it gained on average when the market fell. Up-capture is the same measure on days the market rose — above 100% means it gained more than the market. Up ÷ down capture above 1.0x means it captured more of the upside than the downside (shown only when the fund still fell on market-down days).</div>', unsafe_allow_html=True)
     spec = [("Return since SIF launch", "ret", "%", 1, 1), ("Maximum fall from peak", "mdd", "%", 1, 1),
             ("Currently below peak by", "cur", "%", 1, 1), ("Worst single day", "worst", "%", 2, 1),
             ("Average return on market-down days", "avgdown", "%", 2, 1), ("Down-capture", "dcap", "%", 0, -1),
-            ("Up-capture", "ucap", "%", 0, 0), ("Down days fund fell less than market", "hit", "%", 0, 1),
-            ("Volatility (annualised)", "vol", "%", 1, -1)]
+            ("Down days fund fell less than market", "hit", "%", 0, 1),
+            ("Volatility (annualised)", "vol", "%", 1, -1),
+            ("Up-capture", "ucap", "%", 0, 1), ("Average return on market-up days", "avgup", "%", 2, 1),
+            ("Best single day", "best", "%", 2, 1), ("Days with a positive return", "posdays", "%", 0, 1),
+            ("Up-capture ÷ down-capture", "udratio", "x", 1, 1)]
+    SIF_MF_ONLY = {"ucap", "udratio"}  # benchmark is 100% / 1.0x by definition, so it isn't ranked here
     rows = []
     for name, key, unit, dec, sign in spec:
         vals = sc.loc[key, an.KEYS] * sign
+        if key in SIF_MF_ONLY:
+            vals = vals.drop("BM")
         best = vals.idxmax() if sign and vals.notna().any() else None
         rows.append([(name, "")] + [("—", "") if np.isnan(sc.loc[key, k]) else
                                     (f"{sc.loc[key, k]:.{dec}f}{unit}", "best" if k == best else "")

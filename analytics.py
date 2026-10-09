@@ -38,6 +38,11 @@ def capture(r: pd.Series, bm: pd.Series, down: bool) -> float:
     return r[m].mean() / bm[m].mean() * 100
 
 
+def _ratio(up: float, down: float) -> float:
+    """Up-capture / down-capture; only meaningful when the fund still lost on market-down days."""
+    return up / down if down > 0 and not np.isnan(up) else np.nan
+
+
 def scorecard(reb: pd.DataFrame, rets: pd.DataFrame, dd: pd.DataFrame) -> pd.DataFrame:
     bm, down = rets["BM"], rets["BM"] < 0
     rows = {}
@@ -53,6 +58,10 @@ def scorecard(reb: pd.DataFrame, rets: pd.DataFrame, dd: pd.DataFrame) -> pd.Dat
             ucap=capture(r, bm, False),
             hit=(r[down] > bm[down]).mean() * 100 if down.any() and c != "BM" else np.nan,
             vol=r.std(ddof=1) * np.sqrt(252) * 100 if len(r) > 2 else np.nan,
+            avgup=r[bm > 0].mean() * 100 if (bm > 0).any() else np.nan,
+            best=r.max() * 100,
+            posdays=(r > 0).mean() * 100,
+            udratio=_ratio(capture(r, bm, False), capture(r, bm, True)),
         )
     return pd.DataFrame(rows)
 
