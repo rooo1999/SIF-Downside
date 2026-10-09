@@ -9,6 +9,7 @@ KEYS = ["SIF", "MF", "BM"]
 def align(sif: pd.Series, mf: pd.Series, bm: pd.Series) -> pd.DataFrame:
     """Common-date NAV frame starting at the SIF's first NAV (its inception)."""
     df = pd.concat([sif, mf, bm], axis=1, keys=KEYS, join="inner").dropna()
+    df = df[(df > 0).all(axis=1)]  # a zero/negative NAV is bad data and would break returns
     return df[df.index >= sif.index.min()]
 
 
@@ -29,10 +30,12 @@ def worst_days(rets: pd.DataFrame, n: int) -> pd.DataFrame:
 
 
 def capture(r: pd.Series, bm: pd.Series, down: bool) -> float:
+    """Average daily fund return / average daily benchmark return, on days the benchmark fell (down)
+    or rose (up). Consistent with the 'average return on market-down days' row of the scorecard."""
     m = bm < 0 if down else bm > 0
-    if m.sum() == 0 or compound(bm[m]) == 0:
+    if m.sum() == 0 or bm[m].mean() == 0:
         return np.nan
-    return compound(r[m]) / compound(bm[m]) * 100
+    return r[m].mean() / bm[m].mean() * 100
 
 
 def scorecard(reb: pd.DataFrame, rets: pd.DataFrame, dd: pd.DataFrame) -> pd.DataFrame:

@@ -125,6 +125,9 @@ worst = an.worst_days(rets, n_worst)
 ep = an.episode_table(nav, thr)
 start, end = nav.index[0], nav.index[-1]
 n_down = int((rets["BM"] < 0).sum())
+if n_down == 0:
+    st.info("The benchmark has had no down days since the SIF launched, so there is nothing to compare yet.")
+    st.stop()
 
 st.markdown(
     f'<div class="meta">Comparison window: <b>{start:%d %b %Y}</b> (SIF launch) → <b>{end:%d %b %Y}</b> · '
@@ -134,6 +137,10 @@ st.markdown(
 if len(rets) < 60:
     st.warning(f"The SIF has only {len(rets)} trading days of history — treat these results as early indications.")
 
+if (rets.abs().max() > 0.10).any():
+    bad = ", ".join(LBL[k] for k in an.KEYS if rets[k].abs().max() > 0.10)
+    st.warning(f"Data check: a single-day move above 10% appears in: {bad}. Please verify those NAVs before sharing.")
+
 # ---- headline --------------------------------------------------------------
 cum = {k: an.compound(worst[k]) * 100 for k in an.KEYS}
 fewer = int((worst["SIF"] > worst["BM"]).sum())
@@ -142,11 +149,11 @@ if cum["SIF"] > max(cum["MF"], cum["BM"]):
 elif cum["SIF"] > cum["BM"]:
     colr, head = GOLD, "The SIF fell less than the benchmark, though the mutual fund held up better."
 else:
-    colr, head = AMBER, "The SIF did not fall less than the benchmark over this period."
+    colr, head = AMBER, "On the market's worst days, the SIF did not fall less than the benchmark."
 st.markdown(
     f'<div class="hero" style="--c:{colr}"><b class="h">{head}</b>'
-    f'<div>On the market\'s {n_worst} worst days, the benchmark lost <b>{cum["BM"]:.1f}%</b>, the mutual fund '
-    f'<b>{cum["MF"]:.1f}%</b> and the SIF <b>{cum["SIF"]:.1f}%</b> (compounded). The SIF fell less than the '
+    f'<div>On the market\'s {n_worst} worst days, the benchmark returned <b>{cum["BM"]:.1f}%</b>, the mutual fund '
+    f'<b>{cum["MF"]:.1f}%</b> and the SIF <b>{cum["SIF"]:.1f}%</b> (those days\' returns compounded). The SIF fell less than the '
     f'benchmark on <b>{fewer} of those {n_worst}</b> days. Deepest fall from a peak: SIF <b>{sc.loc["mdd","SIF"]:.1f}%</b> · '
     f'mutual fund <b>{sc.loc["mdd","MF"]:.1f}%</b> · benchmark <b>{sc.loc["mdd","BM"]:.1f}%</b>.</div></div>',
     unsafe_allow_html=True,
@@ -242,12 +249,12 @@ with tab3:
         for _, r in ep.iterrows():
             rows.append([(f"{r.Peak:%d %b %Y} → {r.Trough:%d %b %Y}", ""), (f"{int(r.Days)}", "")] +
                         [signed(r[k]) for k in ["BM", "MF", "SIF"]] + [signed(r.SIF - r.BM)])
-        table(["Decline", "Days", "Benchmark", "Mutual fund", "SIF", "SIF vs benchmark (pp)"], rows)
+        table(["Decline", "Trading days", "Benchmark", "Mutual fund", "SIF", "SIF vs benchmark (pp)"], rows)
 
 with tab4:
     st.markdown("#### Downside scorecard")
     st.markdown('<div class="cap">Best value in each row is highlighted (up-capture is shown for context, not ranked). Capture ratios are measured against the benchmark: '
-                'down-capture below 100% means the fund lost less than the market on the days the market fell; '
+                'down-capture is the fund\'s average daily return on market-down days divided by the benchmark\'s; below 100% means it lost less; '
                 'a negative figure means it gained on average when the market fell.</div>', unsafe_allow_html=True)
     spec = [("Return since SIF launch", "ret", "%", 1, 1), ("Maximum fall from peak", "mdd", "%", 1, 1),
             ("Currently below peak by", "cur", "%", 1, 1), ("Worst single day", "worst", "%", 2, 1),
@@ -270,7 +277,9 @@ with st.expander("Methodology & important notes"):
 - **Common days only:** returns use dates on which all three schemes published a NAV, so every daily comparison is like-for-like.
 - **Worst days:** the days with the largest daily fall in the benchmark since SIF launch; the SIF and mutual fund returns are shown for the same dates.
 - **Market falls:** benchmark peak-to-trough declines of at least the chosen size; the SIF and mutual fund are measured between the same two dates.
-- **Down/up-capture:** compounded fund return ÷ compounded benchmark return on days the benchmark fell/rose.
+- **Down/up-capture:** average daily fund return ÷ average daily benchmark return on the days the benchmark fell/rose.
+- **Volatility:** standard deviation of daily returns × √252.
+- **Worst-days figure:** the returns of those days multiplied together (the days are not consecutive).
 - **Data:** daily NAVs from finapi.upvaly.com. Growth-option NAVs, so returns include reinvested income and are net of expenses.
 - **Short history:** SIFs are new; a short track record can't show how a fund behaves across a full market cycle.
         """
