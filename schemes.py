@@ -44,10 +44,12 @@ MUTUAL_FUNDS = {
     "HDFC Flexi": 101762,
     "HDFC Mid": 105758,
     "Bandhan Small": 147944,
+    "Kotak Arb": 105968,
 }
 BENCHMARKS = {
     "NI N50": 113296,
     "MO N500": 147626,
     "NI Mid150": 148723,
     "NI SC250": 148518,
+    "Bandhan Gilt": 111525,
 }
